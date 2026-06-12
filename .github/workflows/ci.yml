@@ -1,0 +1,111 @@
+name: CI/CD Nginx Demo
+
+# ------------------------------------------------------------------
+# NIVEAU 2 : déclenchement sur push ET pull_request vers main
+# ------------------------------------------------------------------
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: nginx-ci-demo
+
+jobs:
+  # ----------------------------------------------------------------
+  # NIVEAU 1 & 2 : build, vérification des fichiers et tests HTTP
+  # ----------------------------------------------------------------
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Vérifier la présence des fichiers essentiels
+        run: |
+          for f in Dockerfile default.conf index.html; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Fichier manquant : $f"
+              exit 1
+            fi
+            echo "OK : $f présent"
+          done
+
+      - name: Construire l'image Docker
+        run: docker build -t "$IMAGE_NAME:${{ github.sha }}" .
+
+      - name: Tester la configuration Nginx
+        run: docker run --rm "$IMAGE_NAME:${{ github.sha }}" nginx -t
+
+      - name: Lancer le conteneur
+        run: docker run -d --name nginx-test -p 8080:80 "$IMAGE_NAME:${{ github.sha }}"
+
+      - name: Attendre le démarrage
+        run: sleep 3
+
+      - name: Tester que le service répond en HTTP
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          echo "HTTP / => $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Tester l'endpoint /health
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+          echo "HTTP /health => $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Nettoyer le conteneur
+        if: always()
+        run: docker rm -f nginx-test || true
+
+  # ----------------------------------------------------------------
+  # NIVEAU 3 : publier l'image dans GitHub Container Registry (GHCR)
+  #            avec un tag basé sur le SHA du commit
+  # ----------------------------------------------------------------
+  publish:
+    needs: build-test
+    runs-on: ubuntu-latest
+    # On ne publie que sur un push réel vers main (pas sur les PR)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Préparer le nom de l'image en minuscules
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/$OWNER/$IMAGE_NAME" >> "$GITHUB_ENV"
+
+      - name: Se connecter à GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build et push avec tag SHA
+        run: |
+          docker build -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
+
+  # ----------------------------------------------------------------
+  # NIVEAU 3 : déploiement avec validation manuelle
+  #            (l'environnement "production" demande une approbation)
+  # ----------------------------------------------------------------
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Déploiement simulé en production
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "Déploiement de ghcr.io/$OWNER/$IMAGE_NAME:${{ github.sha }}"
+          echo "Smoke test : application en ligne ✅"

@@ -1,0 +1,6 @@
+# Aucun secret, aucun artefact ne doit être versionné
+*.env
+.env
+*.key
+*.pem
+secrets/

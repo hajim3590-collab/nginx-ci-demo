@@ -1,10 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Mon TP CI/CD</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nginx CI/CD Demo</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #eef1fb;
+            color: #2b3a67;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 { font-size: 2.5rem; }
+        .badge {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #6b7a99;
+            color: white;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <h1>Bienvenue sur mon TP CI/CD</h1>
-    <p>Ce site est hébergé avec Nginx et Docker.</p>
+    <h1>Nginx CI/CD Demo</h1>
+    <p>Déployé automatiquement par GitHub Actions.</p>
+    <span class="badge">Pipeline OK</span>
 </body>
 </html>
