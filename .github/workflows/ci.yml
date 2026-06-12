@@ -24,7 +24,7 @@ jobs:
 
       - name: Vérifier la présence des fichiers essentiels
         run: |
-          for f in Dockerfile default.conf index.html; do
+          for f in Dockerfile default.conf nginx.conf index.html; do
             if [ ! -f "$f" ]; then
               echo "::error::Fichier manquant : $f"
               exit 1
