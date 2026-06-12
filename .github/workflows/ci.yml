@@ -108,4 +108,4 @@ jobs:
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "Déploiement de ghcr.io/$OWNER/$IMAGE_NAME:${{ github.sha }}"
-          echo "Smoke test : application en ligne ✅"
+          echo "Smoke test : application en ligne "
